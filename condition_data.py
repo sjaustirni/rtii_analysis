@@ -2,11 +2,11 @@ import numpy as np
 
 from dsp import estimate_fs
 
-
 class ConditionData:
     def __init__(self, elements):
         self.participant = elements[0]["participant"]
         self.milis = ConditionData.extract(elements, "milis")
+        self.seconds = [el/1000 for el in self.milis]
         self.left_button = ConditionData.extract(elements, "left_button")
         self.right_button = ConditionData.extract(elements, "right_button")
         self.joystick = ConditionData.extract(elements, "joystick")

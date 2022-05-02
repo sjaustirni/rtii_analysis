@@ -32,11 +32,16 @@ if __name__ == "__main__":
     highpass_filtered = highpass(keyboard.pulse, keyboard.fs, 0.5, 3)
     median_filtered = signal.medfilt(highpass_filtered, 5)
 
-    fig = go.Figure(data=go.Scatter(x=keyboard.milis, y=keyboard.pulse))
-    fig.show()
+    peaks, _ = signal.find_peaks(median_filtered, threshold=0, height=50)
+    peaks_x = [keyboard.seconds[idx] for idx in peaks]
+    peaks_y = [median_filtered[idx] for idx in peaks]
 
-    fig = go.Figure(data=go.Scatter(x=keyboard.milis, y=highpass_filtered))
-    fig.show()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=keyboard.seconds, y=median_filtered, mode='lines', name='raw'))
+    fig.add_trace(go.Scatter(x=peaks_x, y=peaks_y, mode='markers', name='IBI'))
 
-    fig = go.Figure(data=go.Scatter(x=keyboard.milis, y=median_filtered))
+    fig.update_layout(
+        title='Pulse'
+    )
+
     fig.show()
