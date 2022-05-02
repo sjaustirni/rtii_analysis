@@ -1,5 +1,8 @@
 import numpy as np
 
+from dsp import estimate_fs
+
+
 class ConditionData:
     def __init__(self, elements):
         self.participant = elements[0]["participant"]
@@ -12,7 +15,10 @@ class ConditionData:
         self.pressure = ConditionData.extract(elements, "pressure")
         self.obstacle_hits_time = ConditionData.extract(elements, "obstacle_hits_time")
 
+        self.fs = estimate_fs(self.milis)
+
     @staticmethod
     def extract(elements, name):
-        return np.concatenate(np.array([el[name] for el in elements], dtype="object"))
+        # The data for the first 1323 samples is botched in the keyboard condition, so we scrap those
+        return np.concatenate(np.array([el[name] for el in elements], dtype="object"))[1323:]
 

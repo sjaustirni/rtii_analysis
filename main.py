@@ -1,7 +1,10 @@
 import json
 
 from condition_data import ConditionData
+from dsp import highpass
 from supabase_utils import download_data_for
+import plotly.graph_objects as go
+from scipy import signal
 
 # CONFIG
 cache_file = '.cache/sjau.json'
@@ -26,4 +29,14 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    print(len(keyboard.milis), len(keyboard.obstacle_hits_time))
+    highpass_filtered = highpass(keyboard.pulse, keyboard.fs, 0.5, 3)
+    median_filtered = signal.medfilt(highpass_filtered, 5)
+
+    fig = go.Figure(data=go.Scatter(x=keyboard.milis, y=keyboard.pulse))
+    fig.show()
+
+    fig = go.Figure(data=go.Scatter(x=keyboard.milis, y=highpass_filtered))
+    fig.show()
+
+    fig = go.Figure(data=go.Scatter(x=keyboard.milis, y=median_filtered))
+    fig.show()
