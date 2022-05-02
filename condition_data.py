@@ -1,6 +1,6 @@
 import numpy as np
 
-from dsp import estimate_fs, highpass
+from dsp import estimate_fs, highpass, compute_differences
 from scipy import signal
 
 
@@ -25,7 +25,14 @@ class ConditionData:
         self.fs = estimate_fs(self.milis)
 
         self.pulse_filtered = ConditionData.__filter(self.pulse, self.fs, 0.5)
-        self.pulse_peaks, self.pulse_peaks_heights = ConditionData.__compute_peaks(self.pulse_filtered, self.seconds, 0, 50)
+        self.pulse_peaks, self.pulse_peaks_heights = ConditionData.__compute_peaks(self.pulse_filtered, self.seconds, 0,
+                                                                                   50)
+        self.ibi = ConditionData.__compute_ibi(self.pulse_peaks)
+        self.heart_rate = [round(60/el) for el in self.ibi]
+
+    @staticmethod
+    def __compute_ibi(pulse_peaks):
+        return compute_differences(pulse_peaks)
 
     @staticmethod
     def __compute_peaks(data, timestamps, threshold=0, height=100):
