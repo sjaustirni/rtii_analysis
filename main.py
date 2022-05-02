@@ -29,16 +29,9 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    highpass_filtered = highpass(keyboard.pulse, keyboard.fs, 0.5, 3)
-    median_filtered = signal.medfilt(highpass_filtered, 5)
-
-    peaks, _ = signal.find_peaks(median_filtered, threshold=0, height=50)
-    peaks_x = [keyboard.seconds[idx] for idx in peaks]
-    peaks_y = [median_filtered[idx] for idx in peaks]
-
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=keyboard.seconds, y=median_filtered, mode='lines', name='raw'))
-    fig.add_trace(go.Scatter(x=peaks_x, y=peaks_y, mode='markers', name='IBI'))
+    fig.add_trace(go.Scatter(x=keyboard.seconds, y=keyboard.pulse_filtered, mode='lines', name='raw'))
+    fig.add_trace(go.Scatter(x=keyboard.pulse_peaks, y=keyboard.pulse_peaks_heights, mode='markers', name='IBI'))
 
     fig.update_layout(
         title='Pulse'
