@@ -37,7 +37,8 @@ class ConditionData:
         self.pulse = ConditionData.__extract(elements, "pulse")
         self.eda = ConditionData.__extract(elements, "eda")
         self.pressure = ConditionData.__extract(elements, "pressure")
-        self.obstacle_hits_time = ConditionData.__extract(elements, "obstacle_hits_time")
+        self.obstacle_hits_time = [el / 1000 for el in
+                                   ConditionData.__extract(elements, "obstacle_hits_time", True, self.milis)]
 
         self.fs = estimate_fs(self.milis)
 
@@ -143,13 +144,22 @@ class ConditionData:
         return result
 
     @staticmethod
-    def __extract(samples, name):
+    def __extract(samples, name, sparse_data=False, milis=[]):
         """
         Extracts a signal from samples
 
         :param samples: An object list where each element is one sample
         :param name: Name of the signal to extract
+        :param sparse_data: Whether the data to be extracted is sparse
         :return: A single signal consisting of values gathered across the samples
         """
+
+        data = np.concatenate(np.array([el[name] for el in samples], dtype="object"))
+
         # The data for the first 1323 samples is botched in the keyboard condition, so we scrap those
-        return np.concatenate(np.array([el[name] for el in samples], dtype="object"))[1323:]
+        clean_data_from_sample = 1324
+
+        if sparse_data:
+            return [el for el in data if (el > np.min(milis)) and (el < np.max(milis))]
+
+        return data[clean_data_from_sample:]
