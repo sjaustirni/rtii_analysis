@@ -10,13 +10,20 @@ cache_file = '.cache/sjau.json'
 current_user = ["sjau-desktop", "sjau-desktop2"]
 
 
-def stack_plots(timestamps, signals):
-    fig = make_subplots(rows=len(signals), cols=1, shared_xaxes=True)
+def stack_plots(timestamps, sparse_timestamps, signals, sparse_signals):
+    fig = make_subplots(rows=len(sparse_signals) + len(signals), cols=1, shared_xaxes=True)
+
+    for idx, (sig, name) in enumerate(sparse_signals):
+        fig.add_trace(
+            go.Scatter(x=sparse_timestamps, y=sig, name=name),
+            row=idx + 1,
+            col=1
+        )
 
     for idx, (sig, name) in enumerate(signals):
         fig.add_trace(
             go.Scatter(x=timestamps, y=sig, name=name),
-            row=idx+1,
+            row=len(sparse_signals) + idx + 1,
             col=1
         )
     fig.show()
@@ -41,7 +48,10 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    stack_plots(keyboard.seconds, [
-        (keyboard.heart_rate, "HR"),
-        (keyboard.ibi, "IBI")
-    ])
+    stack_plots(keyboard.seconds, keyboard.pulse_peaks,
+                [
+                    (keyboard.eda, "EDA")
+                ],
+                [
+                    (keyboard.heart_rate, "Heart Rate")
+                ])
