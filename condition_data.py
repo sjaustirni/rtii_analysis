@@ -2,6 +2,7 @@ import numpy as np
 
 from dsp import estimate_fs, highpass, compute_differences
 from scipy import signal
+from scipy.ndimage.filters import uniform_filter1d
 
 
 def median_filter_if_outlier(window, min_value, max_value):
@@ -40,11 +41,14 @@ class ConditionData:
 
         self.fs = estimate_fs(self.milis)
 
-        self.pulse_filtered = ConditionData.__filter(self.pulse, self.fs, 0.5)
+        self.pulse_filtered = ConditionData.__filter(self.pulse, self.fs, high_cutoff=0.5)
         self.pulse_peaks, self.pulse_peaks_heights = ConditionData.__compute_peaks(self.pulse_filtered, self.seconds, 0,
                                                                                    50)
         self.ibi = ConditionData.__compute_ibi(self.pulse_peaks)
         self.heart_rate = [round(60 / el) for el in self.ibi]
+
+        self.eda_filtered = ConditionData.__filter(ConditionData.__remove_eda_artifacts(self.eda), self.fs,
+                                                   moving_avg_kernel=self.fs, median_kernel=None)
 
     @staticmethod
     def __compute_ibi(pulse_peaks):
@@ -54,30 +58,35 @@ class ConditionData:
         return ibi_without_outliers
 
     @staticmethod
-    def __remove_ibi_artifacts(ibi_signal, max_value=60 / 50, min_value=60 / 100, median_window_length=7):
+    def __remove_artifacts(readings, max_value=60 / 50, min_value=60 / 100, median_window_length=None):
         """
-        Applies median filter at outliers. This effectively removes artifacts from the IBI signal.
-        We are median filtering instead of just removing the outliers in order to keep the length of the IBI signal.
+        Applies median filter at outliers. This effectively removes artifacts from the signal.
+        We are median filtering instead of just removing the outliers in order to keep the length of the signal.
         This method is naive, but it works well if max_value and min_value are properly set.
 
-        :param ibi_signal: List of IBI readings
-        :param max_value:   Maximum value of any expected true IBI reading. Readings greater than that are outliers.
-                            Default is 60/50, that is IBI at 50bpm
+        :param readings: List of readings
+        :param max_value:   Maximum value of any expected true reading. Readings greater than that are outliers.
         :param min_value:   Minimum value of any expected true IBI reading. Readings lower than that are outliers.
-                            Default value is 60/100, that is IBI at 100bpm. This is suitable for most sitting tasks.
         :param median_window_length:    How big the rolling window should be. Must be an odd number.
                                         Choose something relatively small. If this window gets too big, you are no
                                         longer removing noise
-            Default value is 60/100, that is IBI at 100bpm. This is suitable for most sitting tasks.
-        :return: IBI signal without artifacts
+        :return: Signal without artifacts
         """
 
         # We need to pad the signal to be able to median filter at and near the edges
         padding = int(median_window_length / 2)
-        padded_ibi = [ibi_signal[0]] * padding + ibi_signal + [ibi_signal[len(ibi_signal) - 1]] * padding
+        padded_readings = np.concatenate(([readings[0]] * padding, readings, [readings[len(readings) - 1]] * padding))
 
-        return [median_filter_if_outlier(padded_ibi[idx - padding:idx + padding + 1], min_value, max_value)
-                for idx in range(padding, len(padded_ibi) - padding)]
+        return [median_filter_if_outlier(padded_readings[idx - padding:idx + padding + 1], min_value, max_value)
+                for idx in range(padding, len(padded_readings) - padding)]
+
+    @staticmethod
+    def __remove_ibi_artifacts(ibi_signal, max_value=60 / 50, min_value=60 / 100, median_window_length=7):
+        return ConditionData.__remove_artifacts(ibi_signal, max_value, min_value, median_window_length)
+
+    @staticmethod
+    def __remove_eda_artifacts(eda_signal, max_value=350, min_value=200, median_window_length=51):
+        return ConditionData.__remove_artifacts(eda_signal, max_value, min_value, median_window_length)
 
     @staticmethod
     def __compute_peaks(data, timestamps, threshold=0, height=100):
@@ -95,22 +104,37 @@ class ConditionData:
         return peaks_x, peaks_y
 
     @staticmethod
-    def __filter(data, fs, high_cutoff):
+    def __filter(data, fs, high_cutoff=None, moving_avg_kernel=None, median_kernel=5):
         """
         Filters data with a high-pass filter to remove movement artifacts
-        and a median filter to remove noise
+        and a median filter to remove noise.
+        Optionally, a low pass filter is applied too, if the `low_cuttoff` is provided
 
         :param data: Raw signal to filter
         :param fs: Sampling frequency
-        :param high_cutoff: Frequency cutoff for highpass filter
-                            (this frequency will get damped at most 3dB)
-                            At most half of the sampling frequency
+        :param high_cutoff: Frequency cutoff for highpass filter. Used to remove motion artifacts.
+                            At most half of the sampling frequency. If None, no highpass filter is applied.
+        :param moving_avg_kernel:   Size of the kernel to smooth data with. Used as a last-resort low-pass filter for
+                                    removing high frequency artifacts in signals with low sampling frequency. The bigger
+                                    the kernel, the more smooth the resulted will be.
+                                    If None, no moving average filter is applied.
+        :param median_kernel:   Size of the kernel to remove outliers. The bigger the kernel to longer-lasting outliers
+                                can be removed. If None, no median kernel is applied.
         :return: Filtered signal without movement and noise artifacts
         """
-        highpass_filtered = highpass(data, fs, high_cutoff, 3)
-        median_filtered = signal.medfilt(highpass_filtered, 5)
 
-        return median_filtered
+        result = np.array(data).astype(np.float)
+
+        if high_cutoff:
+            result = highpass(data, fs, high_cutoff, 3)
+
+        if median_kernel:
+            result = signal.medfilt(result, median_kernel)
+
+        if moving_avg_kernel:
+            result = uniform_filter1d(result, size=moving_avg_kernel)
+
+        return result
 
     @staticmethod
     def __extract(samples, name):

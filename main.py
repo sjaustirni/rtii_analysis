@@ -48,10 +48,11 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    stack_plots(keyboard.seconds, keyboard.pulse_peaks,
+    stack_plots(joystick.seconds, joystick.pulse_peaks,
                 [
-                    (keyboard.eda, "EDA")
+                    (joystick.eda_filtered, "EDA filtered"),
+                    (joystick.eda, "EDA")
                 ],
                 [
-                    (keyboard.heart_rate, "Heart Rate")
+                    (joystick.heart_rate, "Heart Rate")
                 ])
