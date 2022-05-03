@@ -1,14 +1,32 @@
 import json
 
 from condition_data import ConditionData
-from dsp import highpass
 from supabase_utils import download_data_for
 import plotly.graph_objects as go
-from scipy import signal
+from plotly.subplots import make_subplots
 
 # CONFIG
 cache_file = '.cache/sjau.json'
 current_user = ["sjau-desktop", "sjau-desktop2"]
+
+
+def plot_hr_ibi(timestamps, hr, ibi):
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
+
+    fig.add_trace(
+        go.Scatter(x=timestamps, y=hr, name="HR", ),
+        row=1,
+        col=1
+    )
+
+    fig.add_trace(
+        go.Scatter(x=timestamps, y=ibi, name="IBI"),
+        row=2,
+        col=1
+    )
+
+    fig.show()
+
 
 data = None
 if __name__ == "__main__":
@@ -29,12 +47,4 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=keyboard.seconds, y=keyboard.pulse_filtered, mode='lines', name='raw'))
-    fig.add_trace(go.Scatter(x=keyboard.pulse_peaks, y=keyboard.pulse_peaks_heights, mode='markers', name='IBI'))
-
-    fig.update_layout(
-        title='Pulse'
-    )
-
-    fig.show()
+    plot_hr_ibi(keyboard.seconds, keyboard.heart_rate, keyboard.ibi)
