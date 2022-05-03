@@ -49,6 +49,12 @@ class ConditionData:
 
         self.eda_filtered = ConditionData.__filter(ConditionData.__remove_eda_artifacts(self.eda), self.fs,
                                                    moving_avg_kernel=self.fs, median_kernel=None)
+        self.pressure_filtered = ConditionData.__compute_pressure(
+            ConditionData.__filter(self.pressure, self.fs, moving_avg_kernel=5))
+
+    @staticmethod
+    def __compute_pressure(pressure_filtered):
+        return [0 if el > 0.2 else 1 for el in pressure_filtered]
 
     @staticmethod
     def __compute_ibi(pulse_peaks):
