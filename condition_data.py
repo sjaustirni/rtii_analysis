@@ -4,6 +4,22 @@ from dsp import estimate_fs, highpass, compute_differences
 from scipy import signal
 
 
+def median_filter_if_outlier(window, min_value, max_value):
+    """
+    :param window: Window with the value in question in the middle
+    :param min_value: Lower range of accepted values
+    :param max_value: Upper range of accepted values
+    :return: The middle window value if it is in the range of accepted values. Otherwise median value of the window
+    """
+    middle_index = int(len(window) / 2 + 1)
+    current = window[middle_index]
+
+    if current < min_value or current > max_value:
+        return signal.medfilt(window, len(window))[middle_index]
+
+    return current
+
+
 class ConditionData:
     """
     A convenience wrapper around data for a condition. All raw data is saved here.
@@ -28,11 +44,40 @@ class ConditionData:
         self.pulse_peaks, self.pulse_peaks_heights = ConditionData.__compute_peaks(self.pulse_filtered, self.seconds, 0,
                                                                                    50)
         self.ibi = ConditionData.__compute_ibi(self.pulse_peaks)
-        self.heart_rate = [round(60/el) for el in self.ibi]
+        self.heart_rate = [round(60 / el) for el in self.ibi]
 
     @staticmethod
     def __compute_ibi(pulse_peaks):
-        return compute_differences(pulse_peaks)
+        ibi = compute_differences(pulse_peaks)
+        ibi_without_outliers = ConditionData.__remove_ibi_artifacts(ibi, min_value=60 / 80)
+
+        return ibi_without_outliers
+
+    @staticmethod
+    def __remove_ibi_artifacts(ibi_signal, max_value=60 / 50, min_value=60 / 100, median_window_length=7):
+        """
+        Applies median filter at outliers. This effectively removes artifacts from the IBI signal.
+        We are median filtering instead of just removing the outliers in order to keep the length of the IBI signal.
+        This method is naive, but it works well if max_value and min_value are properly set.
+
+        :param ibi_signal: List of IBI readings
+        :param max_value:   Maximum value of any expected true IBI reading. Readings greater than that are outliers.
+                            Default is 60/50, that is IBI at 50bpm
+        :param min_value:   Minimum value of any expected true IBI reading. Readings lower than that are outliers.
+                            Default value is 60/100, that is IBI at 100bpm. This is suitable for most sitting tasks.
+        :param median_window_length:    How big the rolling window should be. Must be an odd number.
+                                        Choose something relatively small. If this window gets too big, you are no
+                                        longer removing noise
+            Default value is 60/100, that is IBI at 100bpm. This is suitable for most sitting tasks.
+        :return: IBI signal without artifacts
+        """
+
+        # We need to pad the signal to be able to median filter at and near the edges
+        padding = int(median_window_length / 2)
+        padded_ibi = [ibi_signal[0]] * padding + ibi_signal + [ibi_signal[len(ibi_signal) - 1]] * padding
+
+        return [median_filter_if_outlier(padded_ibi[idx - padding:idx + padding + 1], min_value, max_value)
+                for idx in range(padding, len(padded_ibi) - padding)]
 
     @staticmethod
     def __compute_peaks(data, timestamps, threshold=0, height=100):
