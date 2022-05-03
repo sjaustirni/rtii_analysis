@@ -10,21 +10,15 @@ cache_file = '.cache/sjau.json'
 current_user = ["sjau-desktop", "sjau-desktop2"]
 
 
-def plot_hr_ibi(timestamps, hr, ibi):
-    fig = make_subplots(rows=2, cols=1, shared_xaxes=True)
+def stack_plots(timestamps, signals):
+    fig = make_subplots(rows=len(signals), cols=1, shared_xaxes=True)
 
-    fig.add_trace(
-        go.Scatter(x=timestamps, y=hr, name="HR", ),
-        row=1,
-        col=1
-    )
-
-    fig.add_trace(
-        go.Scatter(x=timestamps, y=ibi, name="IBI"),
-        row=2,
-        col=1
-    )
-
+    for idx, (sig, name) in enumerate(signals):
+        fig.add_trace(
+            go.Scatter(x=timestamps, y=sig, name=name),
+            row=idx+1,
+            col=1
+        )
     fig.show()
 
 
@@ -47,4 +41,7 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    plot_hr_ibi(keyboard.seconds, keyboard.heart_rate, keyboard.ibi)
+    stack_plots(keyboard.seconds, [
+        (keyboard.heart_rate, "HR"),
+        (keyboard.ibi, "IBI")
+    ])
