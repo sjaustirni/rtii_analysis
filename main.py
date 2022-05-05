@@ -1,5 +1,5 @@
 import json
-
+import math
 import numpy as np
 
 from condition_data import ConditionData
@@ -11,11 +11,37 @@ from plotly.subplots import make_subplots
 cache_file = '.cache/pokus.json'
 current_user = ["pokus", "pokus2"]
 
+# The signals are usually botched in the very beginning due to
+# strong movement artifacts, amplified by running all kinds of
+# filters, that don't do too well on the edges.
+botched_data_skip = 25
+
+
+def compute_rmssd(ibi):
+    squared_differences = [(t*1000 - s*1000) ** 2 for s, t in zip(ibi, ibi[1:])]
+
+    return math.sqrt(sum(squared_differences)/(len(squared_differences) - 1))
+
+
+def get_length_removed_sparse_elements(sparse_timestamps, seconds_to_remove):
+    clean_sparse_timestamps = [el for el in sparse_timestamps if el > (sparse_timestamps[0] + seconds_to_remove)]
+    return len(sparse_timestamps) - len(clean_sparse_timestamps)
+
+
+def quick_summary(condition: ConditionData, title: str):
+    mean_ibi = np.mean(condition.ibi[10:])
+    rmssd = compute_rmssd(condition.ibi[10:])
+
+    print(title)
+    print('Mean IBI: {}bpm'.format(mean_ibi))
+    print('RMSSD: {:.1f}ms'.format(rmssd))
+    print()
+
 
 def quick_plot(condition: ConditionData, title: str):
     stack_plots(title, condition.seconds, condition.pulse_peaks,
                 [
-                    (condition.eda_filtered, "EDA filtered", "blue", True)
+                    (condition.eda, "EDA filtered", "blue", True)
                 ],
                 [
                     (condition.heart_rate, "Heart Rate", "red", True)
@@ -25,7 +51,6 @@ def quick_plot(condition: ConditionData, title: str):
 
 
 def add_events_trace(fig, sig, event_data, row, col):
-
     for event in event_data:
         fig.add_trace(go.Scatter(x=[event, event],
                                  y=[0, np.max(sig)],
@@ -50,17 +75,14 @@ def plot_pulse(condition: ConditionData):
 
 
 def stack_plots(title, timestamps, sparse_timestamps, signals, sparse_signals, events):
-    botched_data_skip = 25*30
-    orig_sparse_timestamp_length = len(sparse_timestamps)
-    sparse_timestamps = [el for el in sparse_timestamps if el > (sparse_timestamps[0] + 10)]
-    sparse_botched_data_skip = orig_sparse_timestamp_length - len(sparse_timestamps)
+    sparse_botched_data_skip = get_length_removed_sparse_elements(sparse_timestamps, 20)
 
     (event_data, event_name) = events
     fig = make_subplots(rows=len(sparse_signals) + len(signals), cols=1, shared_xaxes=True, y_title=title)
 
     for idx, (sig, name, color, show_events) in enumerate(sparse_signals):
         fig.add_trace(
-            go.Scatter(x=sparse_timestamps, y=sig[sparse_botched_data_skip:], line=dict(color=color), name=name),
+            go.Scatter(x=sparse_timestamps[sparse_botched_data_skip:], y=sig[sparse_botched_data_skip:], line=dict(color=color), name=name),
             row=idx + 1,
             col=1
         )
@@ -71,7 +93,7 @@ def stack_plots(title, timestamps, sparse_timestamps, signals, sparse_signals, e
     for idx, (sig, name, color, show_events) in enumerate(signals):
         row = len(sparse_signals) + idx + 1
         fig.add_trace(
-            go.Scatter(x=timestamps[botched_data_skip:], y=sig[botched_data_skip:], line=dict(color=color), name=name),
+            go.Scatter(x=timestamps[botched_data_skip*10:], y=sig[botched_data_skip*10:], line=dict(color=color), name=name),
             row=row,
             col=1
         )
@@ -100,6 +122,8 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    quick_plot(keyboard, "Keyboard")
-    quick_plot(joystick, "Joystick")
+    # quick_plot(keyboard, "Keyboard")
+    quick_summary(keyboard, "Keyboard")
+    # quick_plot(joystick, "Joystick")
+    quick_summary(joystick, "Joystick")
 
