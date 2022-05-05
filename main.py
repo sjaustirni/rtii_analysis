@@ -26,17 +26,19 @@ def quick_summary(condition: ConditionData, title: str):
 
     print(title)
     print('Mean IBI: {:.0f}ms'.format(mean_ibi*1000))
-    print('RMSSD: {:.1f}ms'.format(condition.rmssd))
+    print('RMSSD: {:.1f}ms'.format(condition.rmssd_total))
+    print('pNN50: {:.1f}ms'.format(condition.pnni_50_total))
     print()
-
 
 def quick_plot(condition: ConditionData, title: str):
     stack_plots(title, condition.seconds, condition.pulse_peaks,
                 [
-                    (condition.eda_filtered, "EDA filtered", "blue", True)
+                    (condition.eda_filtered, "EDA filtered", "blue", True),
                 ],
                 [
-                    (condition.heart_rate, "Heart Rate", "red", True)
+                    (condition.heart_rate, "Heart Rate", "red", True),
+                    (condition.rmssd, "RMSSD", "orange", True)
+
                 ],
                 (condition.obstacle_hits_time, "Obstacle hits")
                 )
@@ -114,8 +116,8 @@ if __name__ == "__main__":
     keyboard = ConditionData(keyboard_elements)
     joystick = ConditionData(joystick_elements)
 
-    # quick_plot(keyboard, "Keyboard")
+    quick_plot(keyboard, "Keyboard")
     quick_summary(keyboard, "Keyboard")
-    # quick_plot(joystick, "Joystick")
+    quick_plot(joystick, "Joystick")
     quick_summary(joystick, "Joystick")
 

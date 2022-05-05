@@ -4,6 +4,7 @@ import numpy as np
 from dsp import estimate_fs, highpass, compute_differences
 from scipy import signal
 from scipy.ndimage.filters import uniform_filter1d
+import pandas as pd
 
 
 def median_filter_if_outlier(window, min_value, max_value):
@@ -56,11 +57,20 @@ class ConditionData:
         self.pressure_filtered = ConditionData.__compute_pressure(
             ConditionData.__filter(self.pressure, self.fs, moving_avg_kernel=5))
 
-        self.rmssd = ConditionData.__compute_rmssd(self.ibi)
+        self.rmssd = ConditionData.__compute_time_hrv(self.ibi, 'rmssd').transpose().values.tolist()[0]
+        self.rmssd_total = ConditionData.__compute_time_hrv(self.ibi, 'rmssd', None)
+
+        self.pnni_50_total = ConditionData.__compute_time_hrv(self.ibi, 'pnni_50', None)
+
 
     @staticmethod
-    def __compute_rmssd(ibi_window):
-        return hrv.get_time_domain_features([el*1000 for el in ibi_window[10:]])['rmssd']
+    def __compute_time_hrv(ibi, name, window_size=20):
+        if window_size is None:
+            return hrv.get_time_domain_features([el * 1000 for el in ibi[10:]])[name]
+
+        ibi_frame = pd.DataFrame(data=[np.nan]*10+ibi[10:])
+        return ibi_frame.rolling(window=window_size, min_periods=int(window_size/2)).apply(func=lambda window: hrv.get_time_domain_features(window)[name])
+
 
     @staticmethod
     def __compute_pressure(pressure_filtered):
