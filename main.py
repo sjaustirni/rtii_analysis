@@ -8,15 +8,14 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # CONFIG
-cache_file = '.cache/sjau.json'
-current_user = ["sjau-desktop", "sjau-desktop2"]
+cache_file = '.cache/pokus.json'
+current_user = ["pokus", "pokus2"]
 
 
 def quick_plot(condition: ConditionData, title: str):
     stack_plots(title, condition.seconds, condition.pulse_peaks,
                 [
-                    (condition.eda_filtered, "EDA filtered", "blue", True),
-                    # (condition.pressure_filtered, "Pressure filtered", "orange", False)
+                    (condition.eda_filtered, "EDA filtered", "blue", True)
                 ],
                 [
                     (condition.heart_rate, "Heart Rate", "red", True)
@@ -44,13 +43,24 @@ def add_events_trace(fig, sig, event_data, row, col):
                   col=col)
 
 
+def plot_pulse(condition: ConditionData):
+    fig = go.Figure(go.Scatter(x=condition.seconds, y=condition.pulse_filtered))
+    fig.add_trace(go.Scatter(x=condition.pulse_peaks, y=condition.pulse_peaks_heights))
+    fig.show()
+
+
 def stack_plots(title, timestamps, sparse_timestamps, signals, sparse_signals, events):
+    botched_data_skip = 25*30
+    orig_sparse_timestamp_length = len(sparse_timestamps)
+    sparse_timestamps = [el for el in sparse_timestamps if el > (sparse_timestamps[0] + 10)]
+    sparse_botched_data_skip = orig_sparse_timestamp_length - len(sparse_timestamps)
+
     (event_data, event_name) = events
     fig = make_subplots(rows=len(sparse_signals) + len(signals), cols=1, shared_xaxes=True, y_title=title)
 
     for idx, (sig, name, color, show_events) in enumerate(sparse_signals):
         fig.add_trace(
-            go.Scatter(x=sparse_timestamps, y=sig, line=dict(color=color), name=name),
+            go.Scatter(x=sparse_timestamps, y=sig[sparse_botched_data_skip:], line=dict(color=color), name=name),
             row=idx + 1,
             col=1
         )
@@ -61,7 +71,7 @@ def stack_plots(title, timestamps, sparse_timestamps, signals, sparse_signals, e
     for idx, (sig, name, color, show_events) in enumerate(signals):
         row = len(sparse_signals) + idx + 1
         fig.add_trace(
-            go.Scatter(x=timestamps, y=sig, line=dict(color=color), name=name),
+            go.Scatter(x=timestamps[botched_data_skip:], y=sig[botched_data_skip:], line=dict(color=color), name=name),
             row=row,
             col=1
         )

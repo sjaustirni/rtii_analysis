@@ -28,6 +28,8 @@ class ConditionData:
     """
 
     def __init__(self, elements):
+        # Sometimes the data from the database comes in unsorted for some reason
+        elements.sort(key=lambda el: el["id"])
         self.participant = elements[0]["participant"]
         self.milis = ConditionData.__extract(elements, "milis")
         self.seconds = [el / 1000 for el in self.milis]
@@ -38,15 +40,16 @@ class ConditionData:
         self.eda = ConditionData.__extract(elements, "eda")
         self.pressure = ConditionData.__extract(elements, "pressure")
         self.obstacle_hits_time = [el / 1000 for el in
-                                   ConditionData.__extract(elements, "obstacle_hits_time", True, self.milis)]
+                                   ConditionData.__extract(elements, "obstacle_hits_time")]
 
         self.fs = estimate_fs(self.milis)
 
-        self.pulse_filtered = ConditionData.__filter(self.pulse, self.fs, high_cutoff=0.5)
+
+        self.pulse_filtered = ConditionData.__filter(self.pulse, self.fs, high_cutoff=0.07)
         self.pulse_peaks, self.pulse_peaks_heights = ConditionData.__compute_peaks(self.pulse_filtered, self.seconds, 0,
-                                                                                   50)
+                                                                                   20)
         self.ibi = ConditionData.__compute_ibi(self.pulse_peaks)
-        self.heart_rate = [round(60 / el) for el in self.ibi]
+        self.heart_rate = [round(60 / max(0.00001, el)) for el in self.ibi]
 
         self.eda_filtered = ConditionData.__filter(ConditionData.__remove_eda_artifacts(self.eda), self.fs,
                                                    moving_avg_kernel=self.fs, median_kernel=None)
@@ -96,7 +99,7 @@ class ConditionData:
         return ConditionData.__remove_artifacts(eda_signal, max_value, min_value, median_window_length)
 
     @staticmethod
-    def __compute_peaks(data, timestamps, threshold=0, height=100):
+    def __compute_peaks(data, timestamps, threshold=0, height=50):
         """
         Finds peaks in the data
 
@@ -144,7 +147,7 @@ class ConditionData:
         return result
 
     @staticmethod
-    def __extract(samples, name, sparse_data=False, milis=[]):
+    def __extract(samples, name):
         """
         Extracts a signal from samples
 
@@ -156,10 +159,4 @@ class ConditionData:
 
         data = np.concatenate(np.array([el[name] for el in samples], dtype="object"))
 
-        # The data for the first 1323 samples is botched in the keyboard condition, so we scrap those
-        clean_data_from_sample = 1324
-
-        if sparse_data:
-            return [el for el in data if (el > np.min(milis)) and (el < np.max(milis))]
-
-        return data[clean_data_from_sample:]
+        return data
