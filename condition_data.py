@@ -62,6 +62,15 @@ class ConditionData:
 
         self.pnni_50_total = ConditionData.__compute_time_hrv(self.ibi, 'pnni_50', None)
 
+        self.lf = ConditionData.__compute_freq_hrv(self.ibi, 'lf', self.fs)
+        self.hf = ConditionData.__compute_freq_hrv(self.ibi, 'hf', self.fs)
+        self.lf_hf_ratio = ConditionData.__compute_freq_hrv(self.ibi, 'lf_hf_ratio', self.fs)
+
+
+    @staticmethod
+    def __compute_freq_hrv(ibi, name, fs):
+        return hrv.get_frequency_domain_features([el * 1000 for el in ibi[10:]], sampling_frequency=fs)[name]
+
 
     @staticmethod
     def __compute_time_hrv(ibi, name, window_size=20):

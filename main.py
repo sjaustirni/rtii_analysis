@@ -27,7 +27,10 @@ def quick_summary(condition: ConditionData, title: str):
     print(title)
     print('Mean IBI: {:.0f}ms'.format(mean_ibi*1000))
     print('RMSSD: {:.1f}ms'.format(condition.rmssd_total))
-    print('pNN50: {:.1f}ms'.format(condition.pnni_50_total))
+    print('pNN50: {:.1f}'.format(condition.pnni_50_total))
+    print('LF: {:.0f}'.format(condition.lf))
+    print('HF: {:.0f}'.format(condition.hf))
+    print('LF/HF ratio: {:.2f}'.format(condition.lf_hf_ratio))
     print()
 
 def quick_plot(condition: ConditionData, title: str):
