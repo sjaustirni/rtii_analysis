@@ -1,3 +1,4 @@
+import hrvanalysis as hrv
 import numpy as np
 
 from dsp import estimate_fs, highpass, compute_differences
@@ -44,7 +45,6 @@ class ConditionData:
 
         self.fs = estimate_fs(self.milis)
 
-
         self.pulse_filtered = ConditionData.__filter(self.pulse, self.fs, high_cutoff=0.07)
         self.pulse_peaks, self.pulse_peaks_heights = ConditionData.__compute_peaks(self.pulse_filtered, self.seconds, 0,
                                                                                    20)
@@ -52,9 +52,15 @@ class ConditionData:
         self.heart_rate = [round(60 / max(0.00001, el)) for el in self.ibi]
 
         self.eda_filtered = ConditionData.__filter(ConditionData.__remove_eda_artifacts(self.eda), self.fs,
-                                                   moving_avg_kernel=self.fs, median_kernel=None)
+                                                   moving_avg_kernel=8, median_kernel=None)
         self.pressure_filtered = ConditionData.__compute_pressure(
             ConditionData.__filter(self.pressure, self.fs, moving_avg_kernel=5))
+
+        self.rmssd = ConditionData.__compute_rmssd(self.ibi)
+
+    @staticmethod
+    def __compute_rmssd(ibi_window):
+        return hrv.get_time_domain_features([el*1000 for el in ibi_window[10:]])['rmssd']
 
     @staticmethod
     def __compute_pressure(pressure_filtered):

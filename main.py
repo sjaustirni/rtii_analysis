@@ -1,5 +1,4 @@
 import json
-import math
 import numpy as np
 
 from condition_data import ConditionData
@@ -17,12 +16,6 @@ current_user = ["pokus", "pokus2"]
 botched_data_skip = 25
 
 
-def compute_rmssd(ibi):
-    squared_differences = [(t*1000 - s*1000) ** 2 for s, t in zip(ibi, ibi[1:])]
-
-    return math.sqrt(sum(squared_differences)/(len(squared_differences) - 1))
-
-
 def get_length_removed_sparse_elements(sparse_timestamps, seconds_to_remove):
     clean_sparse_timestamps = [el for el in sparse_timestamps if el > (sparse_timestamps[0] + seconds_to_remove)]
     return len(sparse_timestamps) - len(clean_sparse_timestamps)
@@ -30,18 +23,17 @@ def get_length_removed_sparse_elements(sparse_timestamps, seconds_to_remove):
 
 def quick_summary(condition: ConditionData, title: str):
     mean_ibi = np.mean(condition.ibi[10:])
-    rmssd = compute_rmssd(condition.ibi[10:])
 
     print(title)
-    print('Mean IBI: {}bpm'.format(mean_ibi))
-    print('RMSSD: {:.1f}ms'.format(rmssd))
+    print('Mean IBI: {:.0f}ms'.format(mean_ibi*1000))
+    print('RMSSD: {:.1f}ms'.format(condition.rmssd))
     print()
 
 
 def quick_plot(condition: ConditionData, title: str):
     stack_plots(title, condition.seconds, condition.pulse_peaks,
                 [
-                    (condition.eda, "EDA filtered", "blue", True)
+                    (condition.eda_filtered, "EDA filtered", "blue", True)
                 ],
                 [
                     (condition.heart_rate, "Heart Rate", "red", True)
