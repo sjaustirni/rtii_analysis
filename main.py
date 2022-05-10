@@ -7,8 +7,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # CONFIG
-cache_file = '.cache/pokus.json'
-current_user = ["pokus", "pokus2"]
+cache_file = '.cache/sjau.json'
+current_user = ["sjau-desktop", "sjau-desktop2"]
 
 # The signals are usually botched in the very beginning due to
 # strong movement artifacts, amplified by running all kinds of
@@ -31,16 +31,18 @@ def quick_summary(condition: ConditionData, title: str):
     print('LF: {:.0f}'.format(condition.lf))
     print('HF: {:.0f}'.format(condition.hf))
     print('LF/HF ratio: {:.2f}'.format(condition.lf_hf_ratio))
+    print('Obstacle hits: {:.0f}'.format(len(condition.obstacle_hits_time)))
     print()
 
 def quick_plot(condition: ConditionData, title: str):
     stack_plots(title, condition.seconds, condition.pulse_peaks,
                 [
                     (condition.eda_filtered, "EDA filtered", "blue", True),
+                    (condition.pressure_filtered, "Pressure filtered", "brown", True),
                 ],
                 [
                     (condition.heart_rate, "Heart Rate", "red", True),
-                    (condition.rmssd, "RMSSD", "orange", True)
+                    (condition.rmssd, "RMSSD", "green", True)
 
                 ],
                 (condition.obstacle_hits_time, "Obstacle hits")
@@ -72,7 +74,7 @@ def plot_pulse(condition: ConditionData):
 
 
 def stack_plots(title, timestamps, sparse_timestamps, signals, sparse_signals, events):
-    sparse_botched_data_skip = get_length_removed_sparse_elements(sparse_timestamps, 20)
+    sparse_botched_data_skip = get_length_removed_sparse_elements(sparse_timestamps, 0)
 
     (event_data, event_name) = events
     fig = make_subplots(rows=len(sparse_signals) + len(signals), cols=1, shared_xaxes=True, y_title=title)
